@@ -6,6 +6,12 @@
 tx = tx.Table(new(official.TermLevel).TableName()).Session(&gorm.Session{WithConditions: false})
 ```
 
+注意：此处存在bug，session会过滤所有条件，在链式中应该前置，以上面为例，假设存在分表Table无法工作
+
+```go
+tx = tx.Session(&gorm.Session{WithConditions: false}).Table(new(official.TermLevel).TableName())
+```
+
 Model应该配合Update使用，待验证
 
 ## gorm中使用外键preload
@@ -72,3 +78,22 @@ type TermLevel struct {
 ```
 
 同时可以类似上面为TermId和ParentId指定同一个表的外键，只是需要在preload时分别加载
+
+## 动态表名
+
+Gorm建议在动态表名使用Scopes实现：
+
+```go
+func UserTable(user User) func (tx *gorm.DB) *gorm.DB {
+  return func (tx *gorm.DB) *gorm.DB {
+    if user.Admin {
+      return tx.Table("admin_users")
+    }
+
+    return tx.Table("users")
+  }
+}
+
+db.Scopes(UserTable(user)).Create(&user)
+```
+
